@@ -12,6 +12,9 @@
       #root{
         width: 100%;
         height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
 
       #textBoxContainer{
@@ -37,22 +40,10 @@
 
     </style>
 
-    <div id="root">
-      <div id="ui">
-
-        <p class="note" >Tap/Click around to move</p>
-        <div id="textBoxContainer" >
-          <div id="textBox" >
-            <p id="dialogue" ></p>
-            <div class="btnContainer" >
-              <button id="close" >Close</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
+    <div id="root"> 
       <canvas id="game"></canvas>
     </div>
+    <script src="./src/utils/collision.js"></script>
     <script type="module" src="src/main.js"></script>
   </body>
 </html>

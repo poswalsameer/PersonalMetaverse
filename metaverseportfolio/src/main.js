@@ -1,95 +1,200 @@
-import { scaleFactor } from "./constants";
-import { k } from "./kaboomContext";
+const canvas  = document.querySelector('#game')
+const canvasContext = canvas.getContext('2d');
 
-k.loadSprite("character", "./character.png", {
+// console.log(collisionArr);
 
-    sliceX: 24,
-    sliceY: 2,
-    anims: {
-        "up": 32,
-        "move-up": { from: 32, to: 35, loop: true, speed: 8 },
-        "down": 42,
-        "move-down": { from: 42, to: 45, loop: true, speed: 8 },
-        "left": 41,
-        "move-left": {from: 41, to: 38, loop: true, speed: 8 },
-        "right": 26,
-        "move-right": { from: 26, to: 29, loop: true, speed: 8 }
+canvas.width = window.innerWidth - 200;
+canvas.height = window.innerHeight - 50;
+
+const offset = {
+    x: 0,
+    y: 50,
+}
+
+// canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+const collisionMap = [];
+const boundaries = [];
+
+const image = new Image();
+image.src = './metaverse-new.png';
+
+const playerImage = new Image();
+playerImage.src = './character.png';
+
+for( let i=0; i<collisionArr.length; i+=30 ){
+    collisionMap.push(collisionArr.slice(i, 30+i));
+}
+
+// console.log(collisionMap);
+
+class Boundary {
+    constructor({position}){
+
+        this.position = position;
+        const scalingFactor = 1.8;
+        this.width = 16  * scalingFactor;
+        this.height = 16 * scalingFactor;
     }
 
-});
+    // todo: Understand this code below to scale the boundary to the size of the image
 
-k.loadSprite("map", "./metaverse-new.png");
-k.setBackground(k.Color.fromHex("#311047"));
+    // const aspectRatio = image.width / image.height;
+    //     // Calculate new width and height while maintaining the aspect ratio
+    //     const newWidth = canvas.width * 1.8; // Or any scaling factor
+    //     const newHeight = newWidth / aspectRatio; 
+    //     canvasContext.imageSmoothingEnabled = false;
+    //     canvasContext.drawImage(this.image, this.position.x, this.position.y, image.width, image.height, 0, 0, newWidth, newHeight); //todo: this line is very imp to understand
 
-k.scene("mainFunction", async () => {
-
-    const mapData = await (await fetch("./metaverse-new.tmj")).json();
-    const layers = mapData.layers;
-    const map = k.add([
-        k.sprite("map"),
-        k.pos(0),
-        k.scale(scaleFactor)
-    ]);
-
-    const player = k.add([
-        k.sprite("character", {anim: "down"} ),
-        k.area({
-            shape: new k.Rect(k.vec2(0, 3), 10, 10)
-        }),
-        k.body(),
-        k.anchor("center"),
-        k.pos(),
-        k.scale(scaleFactor),
-        {
-            speed: 250,
-            direction: "down",
-            isInDialogue: false,
-        }
-    ]);
-
-    for (const layer of layers ){
-        if( layer.name === "Wall Boundary" ){
-            for (const boundary of layer.objects){
-                map.add([
-                    k.area({
-                        shape: new k.Rect(k.vec2(0), boundary.width, boundary.height)
-                    }),
-                    k.body({isStatic: true}),
-                    k.pos(boundary.x, boundary.y),
-                    boundary.name,
-                ]);
-
-                if( boundary.name ){
-                    player.onCollide(boundary.name, () => {
-                        player.isInDialogue = true;
-                        //TODO: Add dialogue box when player collides with a wall
-                    })
-                }
-            }
-
-            continue;
-        }
-
-        if( layer.name === "Spawnpoint" ){
-            for (const entity of layer.objects){
-                if( entity.name === "player" ){
-                    player.pos = k.vec2(
-                        (map.pos.x + entity.x) * scaleFactor,
-                        (map.pos.y + entity.y) * scaleFactor 
-                    );
-                    k.add(player);
-                    continue;
-                }
-            }
-        }
+    draw(){
+        canvasContext.fillStyle = 'red';
+        canvasContext.fillRect(this.position.x, this.position.y, this.width, this.height);
     }
+}
 
-    k.onUpdate( () => {
-        k.camPos(player.pos.x, player.pos.y + 100);
-    } )
-
+collisionMap.forEach((row, i) => {
+    row.forEach((symbol, j) => {
+        if( symbol === 4437 ){
+            boundaries.push(new Boundary({
+            position: {
+                x: j * 28.8 + offset.x,
+                y: i * 28.8 + offset.y,
+            }
+            }))
+        }
+    })
 })
 
-//First scene that loads up when the game starts
-k.go("mainFunction");
+console.log("boundaries array: ", boundaries);
 
+class Sprite {
+    constructor({
+        position,
+        image,
+    }){
+        this.position = position;
+        this.image = image;
+    }
+
+    draw(){
+        //RENDERING THE BACKGROUND
+        const aspectRatio = image.width / image.height;
+        // Calculate new width and height while maintaining the aspect ratio
+        const newWidth = canvas.width * 1.8; // Or any scaling factor
+        const newHeight = newWidth / aspectRatio; 
+        canvasContext.imageSmoothingEnabled = false;
+        canvasContext.drawImage(this.image, this.position.x, this.position.y, image.width, image.height, 0, 0, newWidth, newHeight);
+    }
+
+}
+
+const background = new Sprite({
+    position: {
+        x: offset.x,
+        y: offset.y,
+    },
+    image: image
+})
+
+const keys = {
+    w: {
+        pressed: false
+    },
+    a: {
+        pressed: false
+    },
+    s: {
+        pressed: false
+    },
+    d: {
+        pressed: false
+    }
+}
+
+const animatePlayerWalking = () => {
+
+    window.requestAnimationFrame(animatePlayerWalking);
+
+    background.draw();
+
+    // ADDING THE COLLISION BOUNDARIES
+    boundaries.forEach(boundary => {
+        boundary.draw();
+    })
+
+    //RENDERING THE CHARACTER ON THE UI
+    canvasContext.imageSmoothingEnabled = false;
+    canvasContext.drawImage(
+        playerImage, 
+        0, // x coordinate to start crop
+        0, // y coordinate to start crop
+        playerImage.width/24, // crop width
+        playerImage.height, // crop height
+        canvas.width/2 - playerImage.width/24, 
+        canvas.height/2 - playerImage.height/2, 
+        playerImage.width/6, // multiplying the height and width with a factor of 4
+        playerImage.height*4,
+    );
+
+    if( keys.w.pressed && lastKey === 'w' ){
+        background.position.y -= 0.7;
+    }
+    else if( keys.a.pressed && lastKey === 'a' ){
+        background.position.x -= 0.7; 
+    }
+    else if( keys.s.pressed && lastKey === 's' ){
+        background.position.y += 0.7;
+    }
+    else if( keys.d.pressed && lastKey === 'd' ){
+        background.position.x += 0.7;
+    }
+
+}
+
+animatePlayerWalking();
+
+let lastKey = '';
+window.addEventListener('keydown', (e) => {
+    switch (e.key) {
+        case 'w':
+            keys.w.pressed = true;
+            lastKey = 'w';
+            console.log("w pressed");
+            break;
+        case 'a':
+            keys.a.pressed = true;
+            lastKey = 'a';
+            console.log("a pressed");
+            break;
+        case 's':
+            keys.s.pressed = true;
+            lastKey = 's';
+            console.log('s pressed');
+            break;
+        case 'd': 
+            keys.d.pressed = true;
+            lastKey = 'd';
+            console.log('d pressed');
+            break;
+    }
+})
+
+window.addEventListener('keyup', (e) => {
+    switch (e.key) {
+        case 'w':   
+            keys.w.pressed = false;
+            console.log("w released");
+            break;
+        case 'a':   
+            keys.a.pressed = false;
+            console.log("a released");
+            break;
+        case 's':   
+            keys.s.pressed = false;
+            console.log("s released");
+            break;
+        case 'd':   
+            keys.d.pressed = false;
+            console.log("d released");
+            break;
+    }
+})
